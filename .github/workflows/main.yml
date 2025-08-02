@@ -5,20 +5,29 @@ on:
     branches: [ master ]
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout this repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Update summary.json
       uses: docker://docker.io/python:alpine
       with:
         args: python3 progress/summary.py progress/data public
-    - name: Build
+    - name: Create Build Script
       run: |
-        npm ci
-        npm run build
+          cat > "script-$GITHUB_RUN_ID.sh" << 'EOF'
+          npm install --legacy-peer-deps
+          npm ci
+          npm run build
+          EOF
+      shell: bash
+    - name: Build
+      uses: docker://docker.io/node:15
+      with:
+        entrypoint: /bin/sh
+        args: script-${{ github.run_id }}.sh
     - name: Deploy
-      uses: peaceiris/actions-gh-pages@v3
+      uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./build
